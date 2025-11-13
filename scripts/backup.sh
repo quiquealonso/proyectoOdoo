@@ -43,6 +43,10 @@ echo "-> Iniciando contenedores de nuevo para continuar el trabajo..."
 docker-compose start
 
 echo "✅ Copia de seguridad local completada y entorno reiniciado."
+echo "falta subit a GitHub..."
+
+exit
+
 
 echo "======================================================="
 echo "    PASO 2: SUBIENDO CAMBIOS A GITHUB"
