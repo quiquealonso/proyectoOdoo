@@ -3,13 +3,14 @@
 # Restauración segura de la BD Odoo desde un dump SQL plano (nombre fijo)
 # Funciona tanto si los servicios estaban en 'stop' como si se hizo 'down' antes.
 
-set -euo pipefail
+PG_CONTAINER="postgres_dev_dam"             # Nombre del contenedor de Postgres
+ODOO_CONTAINER="odoo_dev_dam"               # Nombre del contenedor de Odoo
+PG_USER="odoo"                              # Usuario de la BD Postgres
+DB_NAME="odoo"                              # Nombre de la BD a respaldar 
+BACKUP_DIR="./data/backups"                 # Directorio de backups en el host
+BACKUP_SQL="${BACKUP_DIR}/${DB_NAME}.sql"   # Ruta completa del archivo SQL de backup
 
-PG_CONTAINER="postgres_dev_dam"
-ODOO_CONTAINER="odoo_dev_dam"
-DB_NAME="odoo"
-PG_USER="odoo"
-BACKUP_SQL="./data/backups/odoo.sql"
+
 
 echo "======================================================="
 echo " INICIANDO RESTAURACIÓN SEGURA"
@@ -35,7 +36,7 @@ until docker exec "${PG_CONTAINER}" pg_isready -U "${PG_USER}" >/dev/null 2>&1; 
   echo "   -> Postgres arrancando, reintentando en 2s..."
   sleep 2
 done
-echo "✅ Postgres listo."
+echo "Postgres listo."
 
 # 5) Eliminar BD y recrear
 echo "==> Eliminando BD '${DB_NAME}' si existe..."
@@ -46,7 +47,7 @@ docker exec "${PG_CONTAINER}" bash -lc "createdb -U '${PG_USER}' '${DB_NAME}'"
 # 6) Restaurar datos
 echo "==> Restaurando datos desde ${BACKUP_SQL}..."
 docker exec -i "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${DB_NAME}" -v ON_ERROR_STOP=on < "${BACKUP_SQL}"
-echo "✅ Restauración completada."
+echo "Restauración completada."
 
 # 7) Espera fija antes de arrancar Odoo
 echo "==> Esperando 1 segundo antes de arrancar Odoo..."
@@ -57,5 +58,5 @@ echo "==> Levantando Odoo..."
 docker compose up -d "${ODOO_CONTAINER}"
 
 echo "======================================================="
-echo " ✅ RESTAURACIÓN COMPLETA. Accede a: http://localhost:8069"
+echo " RESTAURACIÓN COMPLETA. Accede a: http://localhost:8069"
 echo "======================================================="

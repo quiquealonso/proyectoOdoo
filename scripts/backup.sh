@@ -4,17 +4,19 @@
 echo "======================================================="
 echo "    PASO 1: INICIANDO COPIA DE SEGURIDAD LOCAL"
 echo "======================================================="
-set -euo pipefail
 
 # Nombres según tu último docker-compose.yml
-PG_CONTAINER="postgres_dev_dam"
-ODOO_CONTAINER="odoo_dev_dam"
-DB_NAME="odoo"
-PG_USER="odoo"
-BACKUP_SQL="data/backups/odoo.sql"
+PG_CONTAINER="postgres_dev_dam"             # Nombre del contenedor de Postgres
+ODOO_CONTAINER="odoo_dev_dam"               # Nombre del contenedor de Odoo
+PG_USER="odoo"                              # Usuario de la BD Postgres
+DB_NAME="odoo"                              # Nombre de la BD a respaldar 
+BACKUP_DIR="./data/backups"                 # Directorio de backups en el host
+BACKUP_SQL="${BACKUP_DIR}/${DB_NAME}.sql"   # Ruta completa del archivo SQL de backup
 
 echo "==> Parando Odoo para garantizar consistencia..."
-docker-compose stop "$ODOO_CONTAINER"
+docker-compose stop "$ODOO_CONTAINER" 2>/dev/null || true
+
+mkdir -p "${BACKUP_DIR}"
 
 # Comprobar que el contenedor de Postgres está up
 if ! docker ps --format '{{.Names}}' | grep -q "^${PG_CONTAINER}$"; then
@@ -25,15 +27,15 @@ fi
 
 echo "==> Creando backup lógico (SQL plano) de la BD '${DB_NAME}'..."
 # El dump se genera dentro del contenedor y se escribe en el bind mount /backups => ./data/backups del host
-docker exec "$PG_CONTAINER" bash -lc "pg_dump -U '$PG_USER' -d '$DB_NAME' > /backups/odoo.sql"
+docker exec "${PG_CONTAINER}" bash -lc "pg_dump -U '${PG_USER}' -d '${DB_NAME}' > '/backups/${DB_NAME}.sql'"
 
 # Opcional: sincronizar permisos en el host (por si el archivo queda con UID/GID del contenedor)
-chmod 600 "$BACKUP_SQL" || true
+# sudo chmod 600 "${BACKUP_SQL}" || true
 
-echo "Backup completado: $BACKUP_SQL"
+echo "Backup completado: ${BACKUP_SQL}"
 
 echo "==> Arrancando Odoo de nuevo..."
-docker-compose start "$ODOO_CONTAINER"
+docker compose start ${ODOO_CONTAINER}
 
 exit
 
